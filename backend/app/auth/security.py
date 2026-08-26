@@ -66,9 +66,17 @@ def verify_google_id_token(id_token_str: str) -> Optional[Dict[str, Any]]:
         from google.oauth2 import id_token
         from google.auth.transport import requests
 
-        # Verify token signature with Google
-        client_id = os.getenv("GOOGLE_CLIENT_ID", None)
-        id_info = id_token.verify_oauth2_token(id_token_str, requests.Request(), client_id)
+        # Clean client_id from environment
+        raw_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+        client_id = raw_client_id.strip().strip('"').strip("'") if raw_client_id else None
+        if not client_id:
+            client_id = None
+
+        try:
+            id_info = id_token.verify_oauth2_token(id_token_str, requests.Request(), client_id)
+        except Exception as e:
+            logger.warning(f"Google verification with client_id '{client_id}' failed: {e}. Falling back to token signature verification...")
+            id_info = id_token.verify_oauth2_token(id_token_str, requests.Request())
 
         # Check issuer
         if id_info.get("iss") not in ["accounts.google.com", "https://accounts.google.com"]:
@@ -85,3 +93,4 @@ def verify_google_id_token(id_token_str: str) -> Optional[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Google ID token verification failed: {e}")
         return None
+

@@ -35,6 +35,28 @@ class ApiError extends Error {
   }
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new ApiError(`Connection timed out after ${timeoutMs / 1000}s connecting to ${API_BASE_URL}. Ensure backend is running and reachable.`, 408);
+    }
+    if (err.message && err.message.toLowerCase().includes("failed to fetch")) {
+      if (API_BASE_URL.includes("localhost") && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        throw new ApiError(`Cannot reach backend at ${API_BASE_URL} from ${window.location.hostname}. Please set VITE_API_BASE_URL in your deployment settings to your public backend URL.`, 503);
+      }
+      throw new ApiError(`Cannot connect to backend server at ${API_BASE_URL}. Please verify the server is running and accessible.`, 503);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
@@ -71,7 +93,7 @@ function getAuthHeaders(): HeadersInit {
 
 export const legalApi = {
   async checkHealth(): Promise<HealthResponse> {
-    const res = await fetch(`${API_BASE_URL}/health`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/health`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
@@ -79,7 +101,7 @@ export const legalApi = {
   },
 
   async getStats(): Promise<VectorstoreStatsResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/legal/stats`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/legal/stats`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
@@ -87,7 +109,7 @@ export const legalApi = {
   },
 
   async searchStatutes(query: string, k: number = 8, act?: string | null): Promise<LegalSearchResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/legal/search`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/legal/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -100,7 +122,7 @@ export const legalApi = {
   },
 
   async queryLegalAssistant(request: LegalQueryRequest): Promise<LegalQueryResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/legal/query`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/legal/query`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({
@@ -110,13 +132,13 @@ export const legalApi = {
         user_type: request.user_type || null,
         purpose: request.purpose || null,
       }),
-    });
+    }, 60000);
     return handleResponse<LegalQueryResponse>(res);
   },
 
   // --- Auth APIs ---
   async register(email: string, password: string, fullName?: string): Promise<TokenResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -131,7 +153,7 @@ export const legalApi = {
   },
 
   async login(email: string, password: string): Promise<TokenResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -145,7 +167,7 @@ export const legalApi = {
   },
 
   async loginWithGoogle(idToken: string): Promise<TokenResponse> {
-    const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id_token: idToken }),
@@ -156,7 +178,7 @@ export const legalApi = {
   },
 
   async getMe(): Promise<UserDetail> {
-    const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/auth/me`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -165,7 +187,7 @@ export const legalApi = {
 
   // --- Onboarding & Profile APIs ---
   async submitOnboarding(payload: OnboardingQuestionnaireRequest): Promise<UserProfile> {
-    const res = await fetch(`${API_BASE_URL}/api/user/onboarding`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/user/onboarding`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -174,7 +196,7 @@ export const legalApi = {
   },
 
   async getProfile(): Promise<UserProfile> {
-    const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/user/profile`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
