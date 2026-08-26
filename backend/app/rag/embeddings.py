@@ -44,6 +44,8 @@ def get_embedding_model(
     if prov == "local" or "sentence-transformers" in model.lower() or "minilm" in model.lower():
         logger.info(f"Initializing local HuggingFace embedding model: '{model}'")
         try:
+            import torch
+            torch.set_num_threads(1)
             from langchain_huggingface import HuggingFaceEmbeddings
             _CACHED_EMBEDDING_MODEL = HuggingFaceEmbeddings(
                 model_name=model,
