@@ -100,11 +100,7 @@ export const LegalFlowSection: React.FC = () => {
         </div>
 
         {/* 6-Stage Connected Flow Grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          gap: "20px",
-        }}>
+        <div className="responsive-card-grid">
           {FLOW_STEPS.map((item, index) => {
             const Icon = item.icon;
             return (

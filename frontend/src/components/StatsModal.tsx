@@ -37,22 +37,10 @@ export const StatsModal: React.FC<StatsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0, 0, 0, 0.75)",
-      backdropFilter: "blur(8px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 100,
-      padding: "20px",
-    }}>
-      <div className="glass-panel" style={{
-        width: "100%",
+    <div className="modal-backdrop">
+      <div className="modal-content-card" style={{
         maxWidth: "600px",
         padding: "28px",
-        position: "relative",
         background: "rgba(15, 20, 32, 0.95)",
       }}>
         {/* Close Button */}

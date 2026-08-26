@@ -24,14 +24,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       padding: "40px 0 60px",
       overflow: "hidden",
     }}>
-      <div className="container" style={{
-        display: "grid",
-        gridTemplateColumns: "1.1fr 0.9fr",
-        gap: "48px",
-        alignItems: "center",
-        position: "relative",
-        zIndex: 10,
-      }}>
+      <div className="container hero-grid">
         {/* Left Column: Typography & CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -68,9 +61,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
+              className="hero-title-main"
               style={{
                 fontFamily: "var(--font-serif)",
-                fontSize: "clamp(48px, 6vw, 76px)",
+                fontSize: "clamp(42px, 6vw, 76px)",
                 fontWeight: 800,
                 letterSpacing: "0.04em",
                 lineHeight: 1.05,
@@ -89,7 +83,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               transition={{ duration: 0.8, delay: 0.4 }}
               className="gradient-text"
               style={{
-                fontSize: "clamp(24px, 3.2vw, 36px)",
+                fontSize: "clamp(20px, 3.2vw, 36px)",
                 fontWeight: 700,
                 marginTop: "8px",
                 letterSpacing: "-0.01em",
@@ -105,7 +99,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
             style={{
-              fontSize: "16px",
+              fontSize: "15px",
               lineHeight: 1.7,
               color: "var(--text-secondary)",
               maxWidth: "540px",
@@ -119,6 +113,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
+            className="hero-cta-group"
             style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}
           >
             <button
@@ -156,6 +151,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.8 }}
+            className="hero-metrics-group"
             style={{
               display: "flex",
               gap: "24px",
@@ -196,14 +192,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "520px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className="hero-canvas-wrapper"
         >
           {/* Ambient Glow Aura Behind 3D Canvas */}
           <div style={{

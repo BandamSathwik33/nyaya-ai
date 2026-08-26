@@ -59,6 +59,7 @@ export const QueryForm: React.FC<QueryFormProps> = ({ onSubmit, isLoading }) => 
   return (
     <form
       onSubmit={handleSubmit}
+      className="query-form-card"
       style={{
         background: "#080c14",
         border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -69,14 +70,17 @@ export const QueryForm: React.FC<QueryFormProps> = ({ onSubmit, isLoading }) => 
       }}
     >
       {/* Header & Act Selector */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: "20px",
-        flexWrap: "wrap",
-        gap: "16px",
-      }}>
+      <div
+        className="query-form-header"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+          gap: "16px",
+        }}
+      >
         <div>
           <h2 style={{
             fontFamily: "'Instrument Serif', serif",
@@ -93,7 +97,7 @@ export const QueryForm: React.FC<QueryFormProps> = ({ onSubmit, isLoading }) => 
         </div>
 
         {/* Act Filter Tabs */}
-        <div style={{ display: "flex", gap: "6px" }}>
+        <div className="act-filter-group" style={{ display: "flex", gap: "6px" }}>
           {(["ALL", "BNS", "BNSS", "BSA"] as const).map((act) => {
             const isSelected = act === "ALL" ? selectedAct === null : selectedAct === act;
             return (

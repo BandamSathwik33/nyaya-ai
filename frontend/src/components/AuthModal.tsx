@@ -67,33 +67,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(3, 7, 18, 0.88)",
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 110,
-      padding: "20px",
-      fontFamily: "var(--font-body)",
-    }}>
-      <div style={{
-        width: "100%",
-        maxWidth: "440px",
-        background: "#080c14",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: "24px",
-        padding: "40px 32px",
-        position: "relative",
-        boxShadow: "0 30px 70px rgba(0, 0, 0, 0.8)",
-        textAlign: "center",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}>
+    <div className="modal-backdrop">
+      <div
+        className="modal-content-card"
+        style={{
+          maxWidth: "440px",
+          padding: "40px 32px",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         {/* Close Button */}
         <button
           type="button"

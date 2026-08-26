@@ -119,29 +119,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   };
 
   return (
-    <div style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(3, 7, 18, 0.88)",
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 110,
-      padding: "20px",
-      fontFamily: "var(--font-body)",
-    }}>
-      <div style={{
-        width: "100%",
-        maxWidth: "640px",
-        background: "#080c14",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: "24px",
-        padding: "36px",
-        position: "relative",
-        boxShadow: "0 30px 70px rgba(0, 0, 0, 0.8)",
-      }}>
+    <div className="modal-backdrop">
+      <div
+        className="modal-content-card"
+        style={{
+          maxWidth: "640px",
+          padding: "36px",
+        }}
+      >
         {/* Close control */}
         <button
           type="button"

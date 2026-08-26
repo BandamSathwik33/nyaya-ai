@@ -32,15 +32,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       WebkitBackdropFilter: "blur(16px)",
       borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     }}>
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "18px 32px",
-        maxWidth: "1280px",
-        margin: "0 auto",
-        width: "100%",
-      }}>
+      <div
+        className="nav-header-inner"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "18px 32px",
+          maxWidth: "1280px",
+          margin: "0 auto",
+          width: "100%",
+        }}
+      >
         {/* Brand */}
         <div
           onClick={() => onSelectView("landing")}
@@ -59,8 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           NYAYA<sup style={{ fontSize: "11px", verticalAlign: "super" }}>®</sup>
         </div>
 
-        {/* Center Nav Links */}
-        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+        {/* Center Nav Links (Hidden on mobile) */}
+        <div className="nav-links-desktop" style={{ display: "flex", alignItems: "center", gap: "32px" }}>
           <button
             type="button"
             onClick={() => onSelectView("landing")}

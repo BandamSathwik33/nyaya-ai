@@ -94,11 +94,7 @@ export const FeaturesGrid: React.FC = () => {
         </div>
 
         {/* Feature Cards Grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-          gap: "20px",
-        }}>
+        <div className="responsive-card-grid">
           {FEATURES.map((feat, index) => {
             const Icon = feat.icon;
             return (
