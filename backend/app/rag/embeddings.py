@@ -45,7 +45,10 @@ def get_embedding_model(
         logger.info(f"Initializing local HuggingFace embedding model: '{model}'")
         try:
             import torch
+            torch.set_grad_enabled(False)
             torch.set_num_threads(1)
+            import gc
+            gc.collect()
             from langchain_huggingface import HuggingFaceEmbeddings
             _CACHED_EMBEDDING_MODEL = HuggingFaceEmbeddings(
                 model_name=model,
@@ -56,6 +59,11 @@ def get_embedding_model(
             return _CACHED_EMBEDDING_MODEL
         except Exception:
             try:
+                import torch
+                torch.set_grad_enabled(False)
+                torch.set_num_threads(1)
+                import gc
+                gc.collect()
                 from langchain_huggingface import HuggingFaceEmbeddings
                 _CACHED_EMBEDDING_MODEL = HuggingFaceEmbeddings(
                     model_name=model,
