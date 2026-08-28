@@ -12,8 +12,17 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-_CACHED_EMBEDDING_MODEL: Optional[Embeddings] = None
-_CACHED_MODEL_KEY: Optional[str] = None
+class ChromaONNXEmbeddings(Embeddings):
+    """Ultra-lightweight (25MB RAM) ONNX-quantized MiniLM embedding model for low-memory cloud hosts."""
+    def __init__(self):
+        from chromadb.utils.embedding_functions import ONNXMiniLM_L6_V2
+        self.ef = ONNXMiniLM_L6_V2()
+
+    def embed_documents(self, texts: list) -> list:
+        return self.ef(texts)
+
+    def embed_query(self, text: str) -> list:
+        return self.ef([text])[0]
 
 
 def get_embedding_model(
@@ -21,10 +30,10 @@ def get_embedding_model(
     model_name: Optional[str] = None,
     api_key: Optional[str] = None,
 ) -> Embeddings:
-    """Instantiates the configured embedding model (local Sentence-Transformers or Google Gemini).
+    """Instantiates the configured embedding model (ONNX MiniLM, Sentence-Transformers, or Google Gemini).
     
     Args:
-        provider: "local" (HuggingFace/Sentence-Transformers) or "gemini". Defaults to EMBEDDING_PROVIDER in config.
+        provider: "local" (HuggingFace/ONNX) or "gemini". Defaults to EMBEDDING_PROVIDER in config.
         model_name: Model identifier (e.g. 'sentence-transformers/all-MiniLM-L6-v2' or 'models/gemini-embedding-001').
         api_key: Optional Gemini API key override when using Gemini.
         
@@ -42,28 +51,17 @@ def get_embedding_model(
         return _CACHED_EMBEDDING_MODEL
 
     if prov == "local" or "sentence-transformers" in model.lower() or "minilm" in model.lower():
-        logger.info(f"Initializing local HuggingFace embedding model: '{model}'")
+        logger.info(f"Initializing low-memory ONNX MiniLM embedding model: '{model}'")
         try:
-            import torch
-            torch.set_grad_enabled(False)
-            torch.set_num_threads(1)
-            import gc
-            gc.collect()
-            from langchain_huggingface import HuggingFaceEmbeddings
-            _CACHED_EMBEDDING_MODEL = HuggingFaceEmbeddings(
-                model_name=model,
-                model_kwargs={"device": "cpu", "local_files_only": True},
-                encode_kwargs={"normalize_embeddings": True},
-            )
+            _CACHED_EMBEDDING_MODEL = ChromaONNXEmbeddings()
             _CACHED_MODEL_KEY = cache_key
             return _CACHED_EMBEDDING_MODEL
-        except Exception:
+        except Exception as onnx_err:
+            logger.warning(f"ONNX MiniLM initialization failed: {onnx_err}. Falling back to HuggingFaceEmbeddings...")
             try:
                 import torch
                 torch.set_grad_enabled(False)
                 torch.set_num_threads(1)
-                import gc
-                gc.collect()
                 from langchain_huggingface import HuggingFaceEmbeddings
                 _CACHED_EMBEDDING_MODEL = HuggingFaceEmbeddings(
                     model_name=model,
@@ -73,10 +71,9 @@ def get_embedding_model(
                 _CACHED_MODEL_KEY = cache_key
                 return _CACHED_EMBEDDING_MODEL
             except Exception as e:
-                logger.error(f"Failed to load HuggingFaceEmbeddings: {e}")
+                logger.error(f"Failed to load embedding model: {e}")
                 raise ImportError(
-                    "Please install langchain-huggingface and sentence-transformers: "
-                    "pip install langchain-huggingface sentence-transformers"
+                    "Please install chromadb onnxruntime or langchain-huggingface sentence-transformers"
                 ) from e
 
     # Fallback to Google Gemini Embeddings
