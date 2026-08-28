@@ -12,10 +12,6 @@ from typing import Any, Dict, List, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.agent.guardrails import inspect_criminal_intent, generate_guardrail_refusal_response
-from app.config import get_settings
-from app.rag.retriever import retrieve_legal_context
-
 logger = logging.getLogger(__name__)
 
 LEGAL_DISCLAIMER = (
@@ -25,6 +21,10 @@ LEGAL_DISCLAIMER = (
     "not constitute legal advice. It is not a substitute for advice from a qualified lawyer "
     "or legal professional."
 )
+
+from app.config import get_settings
+from app.rag.retriever import retrieve_legal_context
+
 
 
 def _build_persona_system_prompt(user_type: Optional[str] = None, purpose: Optional[str] = None) -> str:
@@ -187,6 +187,7 @@ def answer_legal_question(
     clean_question = question.strip()
 
     # Step 0: Anti-Criminal Intent & Evasion Guardrail Inspection
+    from app.agent.guardrails import inspect_criminal_intent, generate_guardrail_refusal_response
     is_blocked, violation_reason = inspect_criminal_intent(clean_question)
     if is_blocked and violation_reason:
         logger.warning(f"Criminal intent guardrail triggered: {violation_reason}")
