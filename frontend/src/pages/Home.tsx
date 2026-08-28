@@ -1,9 +1,11 @@
 import React, { useState, useRef } from "react";
-import { Sliders } from "lucide-react";
+import { Sliders, Search, UploadCloud, BookOpen } from "lucide-react";
 import { QueryForm } from "../components/QueryForm";
+import { CaseUploadSection } from "../components/CaseUploadSection";
 import { ResultsView } from "../components/ResultsView";
 import { LoadingState } from "../components/LoadingState";
 import { ErrorAlert } from "../components/ErrorAlert";
+import { ActViewerModal } from "../components/ActViewerModal";
 import type { LegalQueryRequest, LegalQueryResponse } from "../types/legal";
 import type { UserDetail, UserProfile, UserType } from "../types/auth";
 import { legalApi } from "../services/api";
@@ -43,16 +45,29 @@ export const Home: React.FC<HomeProps> = ({
   profile,
   onOpenOnboarding,
 }) => {
+  const [activeTab, setActiveTab] = useState<"inquiry" | "upload">("inquiry");
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<LegalQueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRequest, setLastRequest] = useState<LegalQueryRequest | null>(null);
+
+  // Act Viewer Modal state
+  const [isActViewerOpen, setIsActViewerOpen] = useState(false);
+  const [actViewerAct, setActViewerAct] = useState<string>("BNS");
+  const [actViewerPage, setActViewerPage] = useState<number>(1);
+
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const activeType: UserType = profile?.user_type || "citizen_general";
   const personaMeta = PERSONA_LABELS[activeType] || {
     label: "General Citizen",
     desc: "Rights awareness and plain statutory definitions",
+  };
+
+  const handleOpenAct = (act: string, page?: number) => {
+    setActViewerAct(act);
+    setActViewerPage(page || 1);
+    setIsActViewerOpen(true);
   };
 
   const handleQuerySubmit = async (request: LegalQueryRequest) => {
@@ -75,6 +90,31 @@ export const Home: React.FC<HomeProps> = ({
       }, 100);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred during legal research.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCaseUploadSubmit = async (formData: FormData) => {
+    setIsLoading(true);
+    setError(null);
+    setResponse(null);
+
+    if (profile?.user_type) {
+      formData.append("user_type", profile.user_type);
+    }
+    if (profile?.purpose) {
+      formData.append("purpose", profile.purpose);
+    }
+
+    try {
+      const data = await legalApi.analyzeCaseEvidence(formData);
+      setResponse(data);
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } catch (err: any) {
+      setError(err.message || "Case evidence analysis failed. Please verify the uploaded file format.");
     } finally {
       setIsLoading(false);
     }
@@ -135,29 +175,114 @@ export const Home: React.FC<HomeProps> = ({
           </p>
         </div>
 
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button
+            type="button"
+            onClick={() => handleOpenAct("BNS", 1)}
+            className="liquid-glass"
+            style={{
+              borderRadius: "9999px",
+              padding: "8px 16px",
+              fontSize: "12px",
+              color: "#38bdf8",
+              cursor: "pointer",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <BookOpen size={13} />
+            <span>Open Bare Acts</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenOnboarding}
+            className="liquid-glass"
+            style={{
+              borderRadius: "9999px",
+              padding: "8px 20px",
+              fontSize: "13px",
+              color: "#ffffff",
+              cursor: "pointer",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <Sliders size={13} />
+            <span>Modify Persona</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mode Selector Tabs (Statutory Inquiry vs Upload Case Files) */}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          background: "rgba(255, 255, 255, 0.03)",
+          padding: "6px",
+          borderRadius: "14px",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          width: "fit-content",
+        }}
+      >
         <button
           type="button"
-          onClick={onOpenOnboarding}
-          className="liquid-glass"
+          onClick={() => setActiveTab("inquiry")}
           style={{
-            borderRadius: "9999px",
-            padding: "8px 20px",
-            fontSize: "13px",
-            color: "#ffffff",
-            cursor: "pointer",
-            fontWeight: 500,
             display: "flex",
             alignItems: "center",
-            gap: "6px",
+            gap: "8px",
+            padding: "10px 20px",
+            borderRadius: "10px",
+            fontSize: "13px",
+            fontWeight: 600,
+            border: "none",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            background: activeTab === "inquiry" ? "linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%)" : "transparent",
+            color: activeTab === "inquiry" ? "#38bdf8" : "var(--text-secondary)",
+            borderBottom: activeTab === "inquiry" ? "2px solid #38bdf8" : "2px solid transparent",
           }}
         >
-          <Sliders size={13} />
-          <span>Modify Persona</span>
+          <Search size={15} />
+          <span>Statutory Inquiry</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("upload")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "10px 20px",
+            borderRadius: "10px",
+            fontSize: "13px",
+            fontWeight: 600,
+            border: "none",
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+            background: activeTab === "upload" ? "linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%)" : "transparent",
+            color: activeTab === "upload" ? "#38bdf8" : "var(--text-secondary)",
+            borderBottom: activeTab === "upload" ? "2px solid #38bdf8" : "2px solid transparent",
+          }}
+        >
+          <UploadCloud size={15} />
+          <span>Upload Case File & Evidence</span>
         </button>
       </div>
 
       {/* 2. Main Query Interface */}
-      <QueryForm onSubmit={handleQuerySubmit} isLoading={isLoading} />
+      {activeTab === "inquiry" ? (
+        <QueryForm onSubmit={handleQuerySubmit} isLoading={isLoading} />
+      ) : (
+        <CaseUploadSection onSubmitCase={handleCaseUploadSubmit} isLoading={isLoading} />
+      )}
 
       {/* 3. Loading Indicator */}
       {isLoading && <LoadingState />}
@@ -168,9 +293,18 @@ export const Home: React.FC<HomeProps> = ({
       {/* 5. Results View */}
       {response && (
         <div ref={resultsRef} style={{ marginTop: "12px" }}>
-          <ResultsView response={response} />
+          <ResultsView response={response} onOpenAct={handleOpenAct} />
         </div>
       )}
+
+      {/* 6. Interactive Bare Acts PDF Viewer Modal */}
+      <ActViewerModal
+        isOpen={isActViewerOpen}
+        initialAct={actViewerAct}
+        initialPage={actViewerPage}
+        onClose={() => setIsActViewerOpen(false)}
+      />
     </div>
   );
 };
+

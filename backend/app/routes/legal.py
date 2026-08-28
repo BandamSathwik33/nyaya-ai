@@ -1,11 +1,13 @@
-"""Legal research and query API routes for NyayaAI."""
-
 import logging
-from typing import Any, Dict, Optional
+import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.agent.case_analyzer import MultimodalCaseAnalyzer
 from app.agent.researcher import LegalResearchAgent, run_legal_research
 from app.agent.tools import search_legal_knowledge_base
 from app.auth.dependencies import get_optional_user
@@ -219,3 +221,115 @@ async def get_knowledge_base_stats(
         sources=dict(stats.get("sources", {})),
         status=str(stats.get("status", "unknown")),
     )
+
+
+@router.post(
+    "/analyze-case",
+    response_model=LegalQueryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Multimodal Case File & Evidence Analysis",
+    description="Analyzes uploaded case documents (PDF, DOCX, TXT), photos, audio recordings, and video clips, extracting facts and researching grounded BNS/BNSS/BSA provisions.",
+)
+async def analyze_multimodal_case(
+    case_notes: Optional[str] = Form(None),
+    user_type: Optional[str] = Form(None),
+    purpose: Optional[str] = Form(None),
+    act_filter: Optional[str] = Form(None),
+    top_k: int = Form(8),
+    files: List[UploadFile] = File(default=[]),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+    settings: Settings = Depends(get_settings),
+) -> LegalQueryResponse:
+    """Processes uploaded case files and media to produce a grounded legal analysis."""
+    if not settings.GEMINI_API_KEY or not settings.GEMINI_API_KEY.strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Gemini API key is not configured on the server.",
+        )
+
+    processed_files = []
+    for f in files:
+        if f.filename:
+            content = await f.read()
+            processed_files.append({
+                "filename": f.filename,
+                "content_type": f.content_type or "application/octet-stream",
+                "bytes": content,
+            })
+
+    if not case_notes and not processed_files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide case notes or upload at least one case file (PDF/Image/Audio/Video).",
+        )
+
+    norm_act = None
+    if act_filter and act_filter.strip():
+        norm_act = act_filter.strip().upper()
+        if norm_act not in ("BNS", "BNSS", "BSA"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid act_filter '{act_filter}'. Allowed values are 'BNS', 'BNSS', or 'BSA'.",
+            )
+
+    try:
+        analyzer = MultimodalCaseAnalyzer(
+            gemini_model=settings.GEMINI_MODEL,
+            gemini_api_key=settings.GEMINI_API_KEY,
+        )
+        result = analyzer.analyze_case_evidence(
+            case_notes=case_notes,
+            files_data=processed_files,
+            user_type=user_type,
+            purpose=purpose,
+            act_filter=norm_act,
+            top_k=top_k,
+        )
+
+        return LegalQueryResponse(**result)
+
+    except Exception as e:
+        logger.exception(f"Error during multimodal case analysis: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Case analysis failed: {str(e)}",
+        )
+
+
+@router.get(
+    "/acts/{act_name}/pdf",
+    summary="Get official Bare Act PDF",
+    description="Streams the official Gazette Bare Act PDF (BNS, BNSS, or BSA).",
+)
+async def get_act_pdf(
+    act_name: str,
+    settings: Settings = Depends(get_settings),
+):
+    """Returns the official Bare Act PDF for in-browser viewing."""
+    clean_act = act_name.upper().replace(".PDF", "").strip()
+    if clean_act not in ("BNS", "BNSS", "BSA"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Act not found. Valid acts are BNS, BNSS, and BSA.",
+        )
+
+    data_dir = Path(settings.DATA_DIRECTORY).resolve()
+    pdf_path = data_dir / f"{clean_act}.pdf"
+
+    if not pdf_path.exists():
+        # Fallback to local data dir
+        pdf_path = Path("data") / f"{clean_act}.pdf"
+
+    if not pdf_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Bare Act PDF '{clean_act}.pdf' is not available on this server.",
+        )
+
+    return FileResponse(
+        path=str(pdf_path),
+        media_type="application/pdf",
+        filename=f"{clean_act}.pdf",
+    )
+

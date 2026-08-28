@@ -1,16 +1,22 @@
 import React from "react";
-import { Bookmark } from "lucide-react";
+import { Bookmark, ExternalLink } from "lucide-react";
 
 interface LegalAnswerRendererProps {
   content: string;
+  onOpenAct?: (act: string, page?: number) => void;
 }
 
-export const LegalAnswerRenderer: React.FC<LegalAnswerRendererProps> = ({ content }) => {
+export const LegalAnswerRenderer: React.FC<LegalAnswerRendererProps> = ({ content, onOpenAct }) => {
   if (!content) return null;
 
-  // 1. Helper to render text with bold terms and inline citation badges
+  // Pre-clean content: Strip chunk IDs like (Chunk ID: `...`), (Chunk IDs: ...), etc.
+  const sanitizedContent = content
+    .replace(/\s*\((?:Chunk\s*IDs?|Chunk):\s*['`][^'`]+['`]\)/gi, "")
+    .replace(/\s*\(Chunk\s*IDs?:?\s*[^)]+\)/gi, "");
+
+  // 1. Helper to render text with bold terms and inline clickable citation badges
   const renderFormattedText = (text: string) => {
-    // Replace citation patterns [Doc.pdf, Pages X-Y, Chunks '...'] with clean badges
+    // Replace citation patterns [Doc.pdf, Pages X-Y] with clean interactive badges
     const citationRegex = /\[([A-Za-z0-9_.-]+(?:,\s*(?:Pages?|Page)\s*[0-9–-]+)?(?:,\s*Chunks?\s*['`][^'`]+['`])?)\]/g;
 
     const parts = [];
@@ -28,27 +34,41 @@ export const LegalAnswerRenderer: React.FC<LegalAnswerRendererProps> = ({ conten
         .replace(/,\s*Chunks?\s*['`][^'`]+['`]/gi, "")
         .replace(/\.pdf/gi, "");
 
+      // Extract Act and Page for clickable viewer
+      let actName = "BNS";
+      const upperCitation = rawCitation.toUpperCase();
+      if (upperCitation.includes("BNSS")) actName = "BNSS";
+      else if (upperCitation.includes("BSA")) actName = "BSA";
+      else if (upperCitation.includes("BNS")) actName = "BNS";
+
+      const pageMatch = rawCitation.match(/(?:Pages?|Page)\s*([0-9]+)/i);
+      const targetPage = pageMatch ? parseInt(pageMatch[1], 10) : 1;
+
       parts.push(
         <span
           key={match.index}
+          onClick={() => onOpenAct && onOpenAct(actName, targetPage)}
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: "4px",
             fontSize: "11px",
             fontWeight: 500,
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
+            background: "rgba(255, 255, 255, 0.06)",
+            border: "1px solid rgba(56, 189, 248, 0.3)",
             color: "#ffffff",
             padding: "2px 8px",
             borderRadius: "6px",
             margin: "0 4px",
             verticalAlign: "middle",
+            cursor: onOpenAct ? "pointer" : "default",
+            transition: "all 0.15s ease",
           }}
-          title={rawCitation}
+          title={`Click to view ${actName} Bare Act at Page ${targetPage}`}
         >
-          <Bookmark size={10} color="#fbbf24" />
+          <Bookmark size={10} color="#38bdf8" />
           <span>{cleanLabel}</span>
+          {onOpenAct && <ExternalLink size={9} color="#94a3b8" />}
         </span>
       );
 
@@ -83,11 +103,11 @@ export const LegalAnswerRenderer: React.FC<LegalAnswerRendererProps> = ({ conten
   };
 
   // 2. Split response by markdown section headers (### Header)
-  const sections = content.split(/(?=###\s+)/g).filter((s) => s.trim().length > 0);
+  const sections = sanitizedContent.split(/(?=###\s+)/g).filter((s) => s.trim().length > 0);
 
   // If text does not contain ### headers, split by standard double newlines
-  if (sections.length <= 1 && !content.includes("###")) {
-    const paragraphs = content.split(/\n\n+/g);
+  if (sections.length <= 1 && !sanitizedContent.includes("###")) {
+    const paragraphs = sanitizedContent.split(/\n\n+/g);
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {paragraphs.map((p, i) => (

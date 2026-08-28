@@ -18,9 +18,10 @@ import { LegalAnswerRenderer } from "./LegalAnswerRenderer";
 
 interface ResultsViewProps {
   response: LegalQueryResponse;
+  onOpenAct?: (act: string, page?: number) => void;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ response }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ response, onOpenAct }) => {
   const [showAllSources, setShowAllSources] = useState(false);
 
   const getConfidencePill = (conf: string) => {
@@ -217,7 +218,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ response }) => {
           </h3>
         </div>
 
-        <LegalAnswerRenderer content={response.answer} />
+        <LegalAnswerRenderer content={response.answer} onOpenAct={onOpenAct} />
       </div>
 
       {/* 4. Missing Facts Alert */}
@@ -289,7 +290,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ response }) => {
             gap: "14px",
           }}>
             {(showAllSources ? response.sources : response.sources.slice(0, 3)).map((src, idx) => (
-              <SourceCard key={src.chunk_id} source={src} index={idx} />
+              <SourceCard key={src.chunk_id} source={src} index={idx} onOpenAct={onOpenAct} />
             ))}
           </div>
         </div>

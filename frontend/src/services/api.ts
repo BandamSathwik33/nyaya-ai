@@ -132,7 +132,22 @@ export const legalApi = {
         user_type: request.user_type || null,
         purpose: request.purpose || null,
       }),
-    }, 60000);
+    }, 75000);
+    return handleResponse<LegalQueryResponse>(res);
+  },
+
+  async analyzeCaseEvidence(formData: FormData): Promise<LegalQueryResponse> {
+    const token = tokenStorage.get();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/legal/analyze-case`, {
+      method: "POST",
+      headers,
+      body: formData,
+    }, 90000);
     return handleResponse<LegalQueryResponse>(res);
   },
 

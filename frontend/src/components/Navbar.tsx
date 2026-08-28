@@ -4,6 +4,7 @@ import type { UserDetail, UserProfile } from "../types/auth";
 
 interface NavbarProps {
   onOpenStats: () => void;
+  onOpenBareActs?: () => void;
   user: UserDetail | null;
   profile: UserProfile | null;
   activeView: "landing" | "research";
@@ -18,6 +19,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   profile,
   activeView,
   onSelectView,
+  onOpenStats: _onOpenStats,
+  onOpenBareActs,
   onOpenAuth,
   onOpenOnboarding,
   onLogout,
@@ -122,6 +125,29 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Legal Workbench
           </button>
+
+          {onOpenBareActs && (
+            <button
+              type="button"
+              onClick={onOpenBareActs}
+              style={{
+                background: "transparent",
+                border: "none",
+                fontSize: "14px",
+                fontWeight: 400,
+                color: "#38bdf8",
+                cursor: "pointer",
+                transition: "color 0.2s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#7dd3fc")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#38bdf8")}
+            >
+              <span>Bare Acts (BNS / BNSS / BSA)</span>
+            </button>
+          )}
         </div>
 
         {/* Right CTA / User controls */}

@@ -97,7 +97,7 @@ You MUST structure your response using the following headers:
 [List the specific factual or evidentiary details needed to make a conclusive legal determination without guessing]
 
 ### 7. Sources
-[Summary list of cited source provisions, pages, and PDF filenames]
+[Summary list of cited source statutory provisions, section numbers, pages, and official Act PDF filenames. Format strictly as clean bullet points: "• [Act Name] ([File.pdf]), Section [X], Page [Y]". DO NOT include any internal chunk IDs, hash keys, or vector identifiers.]
 
 ### 8. Disclaimer
 [Informational disclaimer stating this is not formal legal counsel]
@@ -112,8 +112,6 @@ def _format_context_for_prompt(chunks: List[Dict[str, Any]]) -> str:
         act = chunk.get("act", "Unknown Act")
         source = chunk.get("source", "Unknown Source")
         page = chunk.get("page", "N/A")
-        chunk_id = chunk.get("chunk_id", f"chunk_{idx}")
-        score = chunk.get("score", chunk.get("distance_score", "N/A"))
         content = chunk.get("content", "").strip()
 
         block = (
@@ -121,8 +119,6 @@ def _format_context_for_prompt(chunks: List[Dict[str, Any]]) -> str:
             f"Act: {act}\n"
             f"Source File: {source}\n"
             f"Page: {page}\n"
-            f"Chunk ID: {chunk_id}\n"
-            f"Relevance Distance: {score}\n"
             f"Text:\n{content}\n"
         )
         context_blocks.append(block)

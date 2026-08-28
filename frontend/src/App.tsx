@@ -4,6 +4,7 @@ import { Footer } from "./components/Footer";
 import { StatsModal } from "./components/StatsModal";
 import { AuthModal } from "./components/AuthModal";
 import { OnboardingModal } from "./components/OnboardingModal";
+import { ActViewerModal } from "./components/ActViewerModal";
 import { LandingPage } from "./pages/LandingPage";
 import { Home } from "./pages/Home";
 import { legalApi, tokenStorage } from "./services/api";
@@ -13,6 +14,7 @@ export function App() {
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isActViewerOpen, setIsActViewerOpen] = useState(false);
   const [user, setUser] = useState<UserDetail | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activeView, setActiveView] = useState<"landing" | "research">("landing");
@@ -110,6 +112,7 @@ export function App() {
       {/* Top Navigation */}
       <Navbar
         onOpenStats={() => setIsStatsOpen(true)}
+        onOpenBareActs={() => setIsActViewerOpen(true)}
         user={user}
         profile={profile}
         activeView={activeView}
@@ -146,6 +149,7 @@ export function App() {
 
       {/* Modals */}
       <StatsModal isOpen={isStatsOpen} onClose={() => setIsStatsOpen(false)} />
+      <ActViewerModal isOpen={isActViewerOpen} onClose={() => setIsActViewerOpen(false)} />
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
