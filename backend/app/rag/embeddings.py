@@ -92,10 +92,12 @@ def get_embedding_model(
         raise ValueError(error_msg)
 
     logger.info(f"Initializing Gemini embedding model: '{model}'")
-    return GoogleGenerativeAIEmbeddings(
+    _CACHED_EMBEDDING_MODEL = GoogleGenerativeAIEmbeddings(
         model=model,
         google_api_key=key.strip(),
     )
+    _CACHED_MODEL_KEY = cache_key
+    return _CACHED_EMBEDDING_MODEL
 
 
 def validate_embedding_connection(embeddings: Embeddings) -> bool:
