@@ -12,6 +12,10 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+_CACHED_EMBEDDING_MODEL: Optional[Embeddings] = None
+_CACHED_MODEL_KEY: Optional[str] = None
+
+
 class ChromaONNXEmbeddings(Embeddings):
     """Ultra-lightweight (25MB RAM) ONNX-quantized MiniLM embedding model for low-memory cloud hosts."""
     def __init__(self):
@@ -23,6 +27,7 @@ class ChromaONNXEmbeddings(Embeddings):
 
     def embed_query(self, text: str) -> list:
         return self.ef([text])[0]
+
 
 
 def get_embedding_model(
