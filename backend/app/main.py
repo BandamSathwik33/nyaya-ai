@@ -52,6 +52,20 @@ app.include_router(user_router)
 app.include_router(legal_router)
 
 
+@app.on_event("startup")
+async def startup_event():
+    """Pre-warms embedding model and vectorstore to eliminate first-query cold start latency."""
+    import logging
+    try:
+        from app.rag.embeddings import get_embedding_model
+        from app.rag.vectorstore import get_vectorstore
+        ef = get_embedding_model()
+        get_vectorstore(ef)
+        logging.getLogger(__name__).info("NyayaAI RAG pipeline pre-warmed successfully.")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Startup pre-warming notice: {e}")
+
+
 @app.get("/", tags=["Root"])
 async def root():
     return {

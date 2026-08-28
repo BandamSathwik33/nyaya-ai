@@ -102,6 +102,9 @@ def detect_intended_act(query: str) -> Optional[str]:
     return None
 
 
+_RETRIEVAL_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+_RETRIEVAL_CACHE_MAX_SIZE = 128
+
 def retrieve_legal_context(
     query: str,
     k: int = 8,
@@ -110,35 +113,16 @@ def retrieve_legal_context(
     collection_name: Optional[str] = None,
     persist_directory: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Performs Act-aware semantic similarity search against the ChromaDB legal knowledge base.
-    
-    Args:
-        query: Natural language legal question or search phrase.
-        k: Maximum number of relevant chunks to retrieve (default: 8).
-        act: Optional filter to restrict/prioritize a specific Act:
-             e.g. "BNS", "BNSS", "BSA" (or "BNS.pdf", etc.).
-        act_filter: Alias for `act`.
-        collection_name: Optional override for Chroma collection name.
-        persist_directory: Optional override for Chroma storage directory.
-        
-    Returns:
-        List of structured dictionaries containing:
-            - content: Full text of the retrieved chunk.
-            - source: PDF filename (e.g. "BNS.pdf").
-            - page: Page number from the source PDF.
-            - chunk_id: Unique deterministic chunk identifier.
-            - score: ChromaDB similarity distance score (lower = closer match).
-            - distance_score: Alias for `score`.
-            - act: Derived document/act name (e.g. "BNS", "BNSS", "BSA").
-            
-    Raises:
-        ValueError: If query is empty or invalid.
-        RuntimeError: If vector store or embedding model fails to initialize.
-    """
+    """Performs fast Act-aware semantic similarity search against the ChromaDB legal knowledge base."""
     if not query or not query.strip():
         raise ValueError("Search query cannot be empty.")
 
     clean_query = query.strip()
+    cache_key = f"{clean_query.lower()}::k={k}::act={act or act_filter}"
+    if cache_key in _RETRIEVAL_CACHE:
+        logger.debug(f"Retrieval cache hit for query: '{clean_query}'")
+        return _RETRIEVAL_CACHE[cache_key]
+
     search_query = _expand_legal_query(clean_query)
     explicit_act = act or act_filter
     inferred_act = detect_intended_act(clean_query) if not explicit_act else None
@@ -166,7 +150,6 @@ def retrieve_legal_context(
     if explicit_act and explicit_act.strip():
         clean_target = explicit_act.strip().upper().replace(".PDF", "")
         source_name = f"{clean_target}.pdf"
-        logger.info(f"Applying strict Act filter: {source_name}")
         try:
             results = vectorstore.similarity_search_with_score(
                 query=search_query,
@@ -177,66 +160,30 @@ def retrieve_legal_context(
             logger.warning(f"Filtered search failed ({e}), falling back to global search...")
             results = vectorstore.similarity_search_with_score(query=search_query, k=k)
 
-    # 2. If an Act was inferred automatically, perform Act-prioritized retrieval
-    # Retrieve majority from inferred primary Act (e.g. top k-2), plus top chunks across all Acts
-    elif inferred_act:
-        primary_source = f"{inferred_act}.pdf"
-        primary_k = max(int(k * 0.75), 1)
-        general_k = k
-
-        try:
-            # Query primary act
-            primary_results = vectorstore.similarity_search_with_score(
-                query=search_query,
-                k=primary_k,
-                filter={"source": primary_source},
-            )
-        except Exception as e:
-            logger.warning(f"Inferred Act search failed ({e}); falling back...")
-            primary_results = []
-
-        # Query all acts to guarantee broad coverage
-        try:
-            general_results = vectorstore.similarity_search_with_score(
-                query=search_query,
-                k=general_k,
-            )
-        except Exception as e:
-            logger.error(f"Global similarity search failed: {e}")
-            raise RuntimeError(f"Semantic retrieval failed: {e}") from e
-
-        # Merge results, preserving highest relevance while ensuring primary Act representation
-        seen_chunk_ids = set()
-        merged_results = []
-
-        # Add primary Act results first
-        for doc, score in primary_results:
-            cid = doc.metadata.get("chunk_id")
-            if cid and cid not in seen_chunk_ids:
-                seen_chunk_ids.add(cid)
-                merged_results.append((doc, score))
-
-        # Add general results
-        for doc, score in general_results:
-            cid = doc.metadata.get("chunk_id")
-            if cid and cid not in seen_chunk_ids:
-                seen_chunk_ids.add(cid)
-                merged_results.append((doc, score))
-
-        # Sort by distance score ascending (lower is better) and trim to top-k
-        merged_results.sort(key=lambda x: x[1])
-        results = merged_results[:k]
-
-    # 3. Otherwise, search across all Acts uniformly
+    # 2. Fast single-pass vector retrieval with in-memory prioritized re-ranking
     else:
+        fetch_k = min(k + 3, 12)
         try:
-            results = vectorstore.similarity_search_with_score(
+            raw_results = vectorstore.similarity_search_with_score(
                 query=search_query,
-                k=k,
+                k=fetch_k,
             )
         except Exception as e:
             logger.error(f"Similarity search failed: {e}")
             raise RuntimeError(f"Semantic retrieval failed: {e}") from e
+
+        if inferred_act:
+            primary_source = f"{inferred_act.upper()}.pdf"
+            reranked = []
+            for doc, score in raw_results:
+                doc_source = str(doc.metadata.get("source", "")).upper()
+                # Apply slight score priority bonus to inferred primary act in-memory
+                bonus = 0.05 if primary_source in doc_source else 0.0
+                reranked.append((doc, score - bonus, score))
+            reranked.sort(key=lambda x: x[1])
+            results = [(doc, orig_score) for doc, _, orig_score in reranked[:k]]
+        else:
+            results = raw_results[:k]
 
     # Format structured output
     structured_results: List[Dict[str, Any]] = []
@@ -256,6 +203,10 @@ def retrieve_legal_context(
             "distance_score": rounded_score,
             "act": doc_name,
         })
+
+    if len(_RETRIEVAL_CACHE) >= _RETRIEVAL_CACHE_MAX_SIZE:
+        _RETRIEVAL_CACHE.pop(next(iter(_RETRIEVAL_CACHE)))
+    _RETRIEVAL_CACHE[cache_key] = structured_results
 
     logger.info(f"Retrieved {len(structured_results)} legal chunks successfully.")
     return structured_results

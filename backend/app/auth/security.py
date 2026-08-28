@@ -56,15 +56,20 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+import requests as py_requests
+
+# Reusable HTTP session with connection pooling for Google certs
+_GOOGLE_HTTP_SESSION = py_requests.Session()
+
 def verify_google_id_token(id_token_str: str) -> Optional[Dict[str, Any]]:
-    """Verifies a Google OAuth2 OpenID Connect ID token.
+    """Verifies a Google OAuth2 OpenID Connect ID token with low-latency session reuse.
     
     Returns:
         Dictionary with user information ('sub', 'email', 'name', 'picture') or None if invalid.
     """
     try:
         from google.oauth2 import id_token
-        from google.auth.transport import requests
+        from google.auth.transport.requests import Request
 
         # Clean client_id from environment
         raw_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -72,11 +77,13 @@ def verify_google_id_token(id_token_str: str) -> Optional[Dict[str, Any]]:
         if not client_id:
             client_id = None
 
+        request_adapter = Request(session=_GOOGLE_HTTP_SESSION)
+
         try:
-            id_info = id_token.verify_oauth2_token(id_token_str, requests.Request(), client_id)
-        except Exception as e:
-            logger.warning(f"Google verification with client_id '{client_id}' failed: {e}. Falling back to token signature verification...")
-            id_info = id_token.verify_oauth2_token(id_token_str, requests.Request())
+            id_info = id_token.verify_oauth2_token(id_token_str, request_adapter, client_id)
+        except Exception:
+            # Fallback without strict audience check
+            id_info = id_token.verify_oauth2_token(id_token_str, request_adapter)
 
         # Check issuer
         if id_info.get("iss") not in ["accounts.google.com", "https://accounts.google.com"]:

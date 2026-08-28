@@ -152,6 +152,9 @@ def calculate_retrieval_confidence(chunks: List[Dict[str, Any]]) -> str:
         return "LOW"
 
 
+_QA_RESPONSE_CACHE: Dict[str, Dict[str, Any]] = {}
+_QA_CACHE_MAX_SIZE = 100
+
 def answer_legal_question(
     question: str,
     top_k: int = 8,
@@ -162,25 +165,18 @@ def answer_legal_question(
     gemini_api_key: Optional[str] = None,
     gemini_model: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Answers a user's legal question using grounded Retrieval-Augmented Generation.
-    
-    Pipeline:
-        0. Security & Anti-Criminality Guardrail check.
-        1. Retrieves relevant statutory chunks from ChromaDB (Act-aware).
-        2. Calculates deterministic retrieval confidence (HIGH, MEDIUM, LOW).
-        3. Formats evidence into structured prompt context.
-        4. Invokes Google Gemini LLM with persona-adapted grounding and structured response rules.
-        5. Returns structured answer with source citations and legal disclaimer.
-    """
-    settings = get_settings()
-    api_key = gemini_api_key or os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
-    model_name = gemini_model or os.getenv("GEMINI_MODEL") or settings.GEMINI_MODEL
-    target_act = act or act_filter
-
+    """Answers a user's legal question using fast grounded Retrieval-Augmented Generation."""
     if not question or not question.strip():
         raise ValueError("Legal question cannot be empty.")
 
     clean_question = question.strip()
+    target_act = act or act_filter
+
+    # Check in-memory answer cache for identical inquiry
+    cache_key = f"{clean_question.lower()}::{target_act}::{user_type}::{purpose}"
+    if cache_key in _QA_RESPONSE_CACHE:
+        logger.info(f"Serving cached legal research for query: '{clean_question[:50]}...'")
+        return _QA_RESPONSE_CACHE[cache_key]
 
     # Step 0: Anti-Criminal Intent & Evasion Guardrail Inspection
     from app.agent.guardrails import inspect_criminal_intent, generate_guardrail_refusal_response
@@ -307,10 +303,16 @@ def answer_legal_question(
     else:
         answer_text = str(response)
 
-    return {
+    result = {
         "question": clean_question,
         "answer": answer_text.strip(),
         "sources": sources_summary,
         "confidence": confidence,
         "disclaimer": LEGAL_DISCLAIMER,
     }
+
+    if len(_QA_RESPONSE_CACHE) >= _QA_CACHE_MAX_SIZE:
+        _QA_RESPONSE_CACHE.pop(next(iter(_QA_RESPONSE_CACHE)))
+    _QA_RESPONSE_CACHE[cache_key] = result
+
+    return result
