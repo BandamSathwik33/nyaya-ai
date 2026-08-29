@@ -54,7 +54,8 @@ async def query_legal_assistant(
         )
 
     # Check API key configuration early
-    if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY.strip() == "your_gemini_api_key_here":
+    effective_api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")
+    if not effective_api_key or effective_api_key.strip() == "your_gemini_api_key_here":
         logger.error("GEMINI_API_KEY is not configured in backend environment.")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -89,8 +90,8 @@ async def query_legal_assistant(
     try:
         agent = LegalResearchAgent(
             top_k=payload.top_k or 8,
-            gemini_model=settings.GEMINI_MODEL,
-            gemini_api_key=settings.GEMINI_API_KEY,
+            gemini_model=settings.GEMINI_MODEL or os.getenv("GEMINI_MODEL"),
+            gemini_api_key=effective_api_key,
         )
         result = agent.research(
             question=payload.question.strip(),
@@ -128,17 +129,19 @@ async def query_legal_assistant(
         if "API_KEY" in err_msg.upper() or "GEMINI" in err_msg.upper() or "QUOTA" in err_msg.upper():
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="LLM synthesis service temporarily unavailable. Please verify API configuration or try again shortly.",
+                detail=f"LLM synthesis service temporarily unavailable ({err_msg}). Please verify API configuration or try again shortly.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Legal research execution encountered an error: {err_msg}",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Unexpected error during legal query: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred while processing your legal query.",
+            detail=f"An unexpected error occurred while processing your legal query: {str(e)}",
         )
 
 
