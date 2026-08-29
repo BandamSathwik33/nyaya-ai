@@ -229,6 +229,10 @@ def answer_legal_question(
         }
 
     # Step 3: Validate API Key for LLM Generation
+    settings = get_settings()
+    api_key = gemini_api_key or os.getenv("GEMINI_API_KEY") or settings.GEMINI_API_KEY
+    model_name = gemini_model or os.getenv("GEMINI_MODEL") or settings.GEMINI_MODEL or "gemini-2.5-flash"
+
     if not api_key or not api_key.strip() or api_key.strip() == "your_gemini_api_key_here":
         raise ValueError(
             "GEMINI_API_KEY is not configured in backend/.env. "
