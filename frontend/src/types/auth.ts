@@ -48,7 +48,7 @@ export interface TokenResponse {
 export interface OnboardingQuestionnaireRequest {
   user_type: UserType;
   purpose: ResearchPurpose;
-  background_notes: string;
+  background_notes?: string;
   experience_level?: "beginner" | "intermediate" | "expert";
   preferred_language?: string;
 }

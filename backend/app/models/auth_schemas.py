@@ -41,11 +41,10 @@ class OnboardingQuestionnaireRequest(BaseModel):
         ...,
         description="Purpose: 'seeking_remedy' | 'reporting_crime' | 'academic_study' | 'case_preparation' | 'statutory_reference' | 'general_awareness'"
     )
-    background_notes: str = Field(
-        ...,
-        min_length=5,
+    background_notes: Optional[str] = Field(
+        None,
         max_length=1000,
-        description="Compulsory factual situation or case background"
+        description="Optional factual situation, selected domain, or case background"
     )
     experience_level: Optional[str] = Field("beginner", description="'beginner' | 'intermediate' | 'expert'")
     preferred_language: Optional[str] = Field("en", description="'en' | 'hi'")

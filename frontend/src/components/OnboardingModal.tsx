@@ -69,6 +69,64 @@ const OBJECTIVES: Array<{
   },
 ];
 
+const DOMAIN_OPTIONS: Array<{
+  id: string;
+  title: string;
+  subtitle: string;
+  defaultNotes: string;
+  icon: string;
+  actBadge: string;
+}> = [
+  {
+    id: "extortion_threat",
+    title: "Extortion, Threat & Criminal Intimidation",
+    subtitle: "Threats to person or property, blackmail, extortion demands under Section 308 BNS.",
+    defaultNotes: "Threats, extortion, criminal intimidation, or coercion under BNS.",
+    icon: "🛡️",
+    actBadge: "BNS",
+  },
+  {
+    id: "fir_procedure",
+    title: "Police FIR & Investigation Safeguards",
+    subtitle: "Lodging an FIR under Section 173 BNSS, zero FIR, arrest rules & bail procedures.",
+    defaultNotes: "Filing an FIR, police procedure, arrest rights, and bail under BNSS.",
+    icon: "📑",
+    actBadge: "BNSS",
+  },
+  {
+    id: "fraud_cheating",
+    title: "Financial Cheating, Cyber Fraud & Forgery",
+    subtitle: "Online scam, UPI/banking fraud, breach of trust, forged documents under BNS.",
+    defaultNotes: "Financial cheating, cyber fraud, forgery, and breach of trust.",
+    icon: "💳",
+    actBadge: "BNS",
+  },
+  {
+    id: "digital_evidence",
+    title: "Electronic Evidence & Digital Records",
+    subtitle: "WhatsApp chats, CCTV footage, call logs & Section 63 BSA certificate criteria.",
+    defaultNotes: "Electronic records, digital certificates under Sec 63 BSA, and admissibility.",
+    icon: "📱",
+    actBadge: "BSA",
+  },
+  {
+    id: "general_awareness",
+    title: "General Criminal Law & Rights Awareness",
+    subtitle: "Statutory rights, procedural timelines, legal definitions & Sanhitas reference.",
+    defaultNotes: "General legal inquiry, rights awareness, and statutory provisions.",
+    icon: "⚖️",
+    actBadge: "All Acts",
+  },
+  {
+    id: "custom_inquiry",
+    title: "Custom Legal Scenario (Optional Details)",
+    subtitle: "Provide your own specific factual scenario or custom inquiry notes.",
+    defaultNotes: "",
+    icon: "✍️",
+    actBadge: "Custom",
+  },
+];
+
 export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   isOpen,
   onClose,
@@ -78,7 +136,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedType, setSelectedType] = useState<UserType>(initialProfile?.user_type || "victim_complainant");
   const [selectedPurpose, setSelectedPurpose] = useState<ResearchPurpose>(initialProfile?.purpose || "seeking_remedy");
+  const [selectedDomain, setSelectedDomain] = useState<string>("extortion_threat");
   const [backgroundNotes, setBackgroundNotes] = useState(initialProfile?.background_notes || "");
+  const [showCustomText, setShowCustomText] = useState(false);
   const [experienceLevel, setExperienceLevel] = useState<"beginner" | "intermediate" | "expert">(
     initialProfile?.experience_level || "beginner"
   );
@@ -88,21 +148,28 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   if (!isOpen) return null;
 
-  const isStep3Valid = backgroundNotes.trim().length >= 5;
+  const handleDomainSelect = (domainId: string) => {
+    setSelectedDomain(domainId);
+    const domain = DOMAIN_OPTIONS.find((d) => d.id === domainId);
+    if (domainId === "custom_inquiry") {
+      setShowCustomText(true);
+    } else {
+      setShowCustomText(false);
+      setBackgroundNotes(domain?.defaultNotes || "");
+    }
+  };
 
   const handleSubmit = async () => {
-    if (!isStep3Valid) {
-      setError("Please outline your inquiry (at least 5 characters) to complete your profile.");
-      return;
-    }
-
     setLoading(true);
     setError(null);
+
+    const chosenDomain = DOMAIN_OPTIONS.find((d) => d.id === selectedDomain);
+    const finalNotes = backgroundNotes.trim() || chosenDomain?.defaultNotes || "General statutory inquiry";
 
     const payload: OnboardingQuestionnaireRequest = {
       user_type: selectedType,
       purpose: selectedPurpose,
-      background_notes: backgroundNotes.trim(),
+      background_notes: finalNotes,
       experience_level: experienceLevel,
       preferred_language: language,
     };
@@ -123,8 +190,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       <div
         className="modal-content-card"
         style={{
-          maxWidth: "640px",
+          maxWidth: "680px",
           padding: "36px",
+          maxHeight: "90vh",
+          overflowY: "auto",
         }}
       >
         {/* Close control */}
@@ -150,7 +219,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         {/* Progress indicator */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "28px" }}>
           <span style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-            Part {step} of 3
+            Step {step} of 3
           </span>
           <div style={{ display: "flex", gap: "6px" }}>
             {[1, 2, 3].map((s) => (
@@ -403,112 +472,175 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           </div>
         )}
 
-        {/* STEP 3: Case Circumstances (Mandatory Input) */}
+        {/* STEP 3: Legal Scenario & Domain Selection (Option Selection Based) */}
         {step === 3 && (
           <div>
-            <div style={{ marginBottom: "24px" }}>
+            <div style={{ marginBottom: "20px" }}>
               <h2 style={{
                 fontFamily: "'Instrument Serif', serif",
-                fontSize: "32px",
+                fontSize: "30px",
                 fontWeight: 400,
                 color: "#ffffff",
                 lineHeight: 1.15,
                 letterSpacing: "-0.02em",
               }}>
-                Case circumstances
+                Primary legal scenario
               </h2>
-              <p style={{ fontSize: "14px", color: "hsl(var(--muted-foreground))", marginTop: "6px" }}>
-                Outline the specific incident or legal inquiry to calibrate the research engine.
+              <p style={{ fontSize: "14px", color: "hsl(var(--muted-foreground))", marginTop: "4px" }}>
+                Select your legal inquiry area to pre-calibrate statutory citations and provisions.
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: 500, color: "#ffffff" }}>
-                    Factual summary <span style={{ color: "#f87171" }}>*</span>
-                  </label>
-                  <span style={{ fontSize: "12px", color: isStep3Valid ? "#34d399" : "hsl(var(--muted-foreground))" }}>
-                    {backgroundNotes.trim().length} characters
-                  </span>
-                </div>
+            {/* Option Cards Grid */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "9px", marginBottom: "18px" }}>
+              {DOMAIN_OPTIONS.map((domain) => {
+                const isSelected = selectedDomain === domain.id;
+                return (
+                  <div
+                    key={domain.id}
+                    onClick={() => handleDomainSelect(domain.id)}
+                    style={{
+                      background: isSelected ? "rgba(255, 255, 255, 0.07)" : "rgba(255, 255, 255, 0.02)",
+                      border: isSelected ? "1px solid rgba(255, 255, 255, 0.45)" : "1px solid rgba(255, 255, 255, 0.06)",
+                      borderRadius: "12px",
+                      padding: "12px 16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      transition: "all 0.18s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <span style={{ fontSize: "20px", flexShrink: 0 }}>{domain.icon}</span>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#ffffff" }}>
+                            {domain.title}
+                          </h3>
+                          <span style={{
+                            fontSize: "10px",
+                            color: "hsl(var(--muted-foreground))",
+                            background: "rgba(255, 255, 255, 0.06)",
+                            padding: "1px 6px",
+                            borderRadius: "4px",
+                            fontWeight: 500,
+                          }}>
+                            {domain.actBadge}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))", marginTop: "2px", lineHeight: 1.35 }}>
+                          {domain.subtitle}
+                        </p>
+                      </div>
+                    </div>
 
+                    {/* Radio indicator */}
+                    <div style={{
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "50%",
+                      border: isSelected ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      {isSelected && (
+                        <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ffffff" }} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Optional Custom Notes */}
+            {showCustomText && (
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ display: "block", fontSize: "12px", color: "hsl(var(--muted-foreground))", marginBottom: "6px" }}>
+                  Specific Case Details / Notes (Optional)
+                </label>
                 <textarea
-                  required
                   value={backgroundNotes}
-                  onChange={(e) => {
-                    setBackgroundNotes(e.target.value);
-                    if (error) setError(null);
-                  }}
-                  placeholder="e.g. Someone is demanding money under threat of property destruction..."
-                  rows={4}
+                  onChange={(e) => setBackgroundNotes(e.target.value)}
+                  placeholder="Outline any specific dates, amounts, or incident facts..."
+                  rows={2}
                   style={{
                     width: "100%",
                     background: "rgba(255, 255, 255, 0.03)",
-                    border: isStep3Valid ? "1px solid rgba(255, 255, 255, 0.15)" : "1px solid rgba(255, 255, 255, 0.08)",
-                    borderRadius: "14px",
-                    padding: "14px 16px",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
                     color: "#ffffff",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontFamily: "inherit",
-                    lineHeight: 1.5,
                     resize: "none",
                     outline: "none",
                   }}
                 />
               </div>
+            )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", color: "hsl(var(--muted-foreground))", marginBottom: "6px" }}>
-                    Language
-                  </label>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      background: "rgba(255, 255, 255, 0.03)",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
-                      borderRadius: "10px",
-                      color: "#ffffff",
-                      fontSize: "13px",
-                      outline: "none",
-                    }}
-                  >
-                    <option value="en" style={{ background: "#080c14" }}>English</option>
-                    <option value="hi" style={{ background: "#080c14" }}>Hindi (हिंदी)</option>
-                  </select>
-                </div>
+            {/* Language & Familiarity Selectors */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginTop: "12px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", color: "hsl(var(--muted-foreground))", marginBottom: "4px" }}>
+                  Language
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "10px",
+                    color: "#ffffff",
+                    fontSize: "13px",
+                    outline: "none",
+                  }}
+                >
+                  <option value="en" style={{ background: "#080c14" }}>English</option>
+                  <option value="hi" style={{ background: "#080c14" }}>Hindi (हिंदी)</option>
+                </select>
+              </div>
 
-                <div>
-                  <label style={{ display: "block", fontSize: "12px", color: "hsl(var(--muted-foreground))", marginBottom: "6px" }}>
-                    Familiarity
-                  </label>
-                  <select
-                    value={experienceLevel}
-                    onChange={(e: any) => setExperienceLevel(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      background: "rgba(255, 255, 255, 0.03)",
-                      border: "1px solid rgba(255, 255, 255, 0.08)",
-                      borderRadius: "10px",
-                      color: "#ffffff",
-                      fontSize: "13px",
-                      outline: "none",
-                    }}
-                  >
-                    <option value="beginner" style={{ background: "#080c14" }}>General (Plain English)</option>
-                    <option value="intermediate" style={{ background: "#080c14" }}>Academic / Student</option>
-                    <option value="expert" style={{ background: "#080c14" }}>Practicing Advocate</option>
-                  </select>
-                </div>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", color: "hsl(var(--muted-foreground))", marginBottom: "4px" }}>
+                  Familiarity
+                </label>
+                <select
+                  value={experienceLevel}
+                  onChange={(e: any) => setExperienceLevel(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "10px",
+                    color: "#ffffff",
+                    fontSize: "13px",
+                    outline: "none",
+                  }}
+                >
+                  <option value="beginner" style={{ background: "#080c14" }}>General (Plain English)</option>
+                  <option value="intermediate" style={{ background: "#080c14" }}>Academic / Student</option>
+                  <option value="expert" style={{ background: "#080c14" }}>Practicing Advocate</option>
+                </select>
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "28px" }}>
+            {/* Bottom Actions */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
               <button
                 type="button"
                 onClick={() => setStep(2)}
@@ -528,22 +660,21 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 type="button"
                 className="liquid-glass"
                 onClick={handleSubmit}
-                disabled={loading || !isStep3Valid}
+                disabled={loading}
                 style={{
                   borderRadius: "9999px",
                   padding: "12px 36px",
                   fontSize: "14px",
                   color: "#ffffff",
-                  cursor: isStep3Valid ? "pointer" : "not-allowed",
+                  cursor: "pointer",
                   fontWeight: 500,
-                  opacity: isStep3Valid ? 1 : 0.4,
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
                 }}
               >
                 {loading ? (
-                  <span>Initializing...</span>
+                  <span>Saving...</span>
                 ) : (
                   <>
                     <span>Enter Workbench</span>

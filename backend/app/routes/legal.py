@@ -55,7 +55,7 @@ async def query_legal_assistant(
 
     # Check API key configuration early
     effective_api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")
-    if not effective_api_key or effective_api_key.strip() == "your_gemini_api_key_here":
+    if not effective_api_key or not effective_api_key.strip() or effective_api_key.strip() == "your_gemini_api_key_here":
         logger.error("GEMINI_API_KEY is not configured in backend environment.")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
